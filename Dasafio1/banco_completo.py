@@ -3,7 +3,6 @@ from hashlib import sha256
 import getpass
 from datetime import datetime
 
-# Funções auxiliares
 def hash_senha(senha):
     return sha256(senha.encode()).hexdigest()
 
@@ -140,6 +139,10 @@ def transferir(conta):
         if not destino:
             print("❌ Conta de destino não encontrada.")
             return conta
+        
+        if cpf_destino == conta[2]:
+            print("❌ Conta de destino não pode ser remetente.")
+            return conta
 
         novo_saldo_origem = conta[4] - valor
         novo_saldo_destino = destino[4] + valor
@@ -178,6 +181,23 @@ def atualizar_conta(id):
         cur = con.cursor()
         cur.execute("SELECT * FROM contas WHERE id = ?", (id,))
         return cur.fetchone()
+    
+def encerrar_conta(conta):
+    if conta[4] != 0:
+        print("❌ Conta só pode ser encerrada com saldo R$ 0.00.")
+        return False
+
+    confirmacao = input("Tem certeza que deseja encerrar a conta? Essa ação é irreversível (s/n): ").lower()
+    if confirmacao == "s":
+        with conectar() as con:
+            cur = con.cursor()
+            cur.execute("DELETE FROM transacoes WHERE conta_id = ?", (conta[0],))
+            cur.execute("DELETE FROM contas WHERE id = ?", (conta[0],))
+        print("✅ Conta encerrada com sucesso. Encerrando sessão...")
+        return True
+    else:
+        print("❌ Ação cancelada.")
+        return False
 
 def menu_logado(conta):
     while True:
@@ -187,7 +207,8 @@ def menu_logado(conta):
         3. Sacar
         4. Transferir
         5. Ver extrato      
-        6. Sair
+        6. Encerrar Conta
+        7. Sair
         """)
         opcao = input("Escolha uma opção: ")
 
@@ -203,6 +224,9 @@ def menu_logado(conta):
         elif opcao == '5':
             extrato(conta)
         elif opcao == "6":
+            if encerrar_conta(conta):
+                break
+        elif opcao == "7":
             print("👋 Até logo!")
             break
         else:
